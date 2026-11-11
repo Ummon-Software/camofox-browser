@@ -24,3 +24,11 @@ Enabled in `camofox.config.json`. File: `CAMOFOX_IDENTITY_FILE` env var, or `"fi
 - `identity.js` — reading and writing the config env, merging, saving
 - `index.js` — the `browser:launching` hook
 - `identity.test.js` — unit tests
+
+## Checking It
+
+`node scripts/identity-check.mjs` restarts the browser five times and prints the fingerprint each time. Measured 2026-11-11 on macOS (Apple silicon) with the bundled Camoufox 152.0.4-beta.30: user agent, platform, cores, screen, window, WebGL renderer, canvas pixels, audio and fonts were identical across three pinned launches. Across two unpinned launches, most of them changed (the WebGL renderer happened to come up the same both times). Rerun it after upgrading Camoufox.
+
+The PNG from `toDataURL`/`toBlob` still differs per launch, and so does the CreepJS ID that hashes it. Firefox's baseline fingerprinting protection adds a per-session chunk to exported PNGs; Camoufox keeps that on because stock Firefox does it. `canvas:seed` is saved but no Camoufox release reads it (camoufox issue #721).
+
+Don't swap in a newer Camoufox through `CAMOUFOX_EXECUTABLE` without checking the user agent: camoufox-js 0.11.5 takes the Firefox version from its own install, so a 158 binary went out claiming Firefox 152.
