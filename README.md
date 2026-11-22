@@ -481,25 +481,34 @@ To file telemetry reports in your own GitHub repo instead of `jo-inc/camofox-bro
    - Install the app on your target repo (Install App -> select repo)
    - Note your **App ID** (number on the app's General page) and **Installation ID** (from the URL after installing: `github.com/settings/installations/{id}`)
 
-2. **Deploy the endpoint** -- clone this repo and deploy the worker:
+2. **Set up the worker** -- clone this repo and install `cf`:
    ```bash
    cd workers/crash-reporter
-   # Edit wrangler.toml: set account_id to your Cloudflare account ID
-   npx wrangler deploy
+   # Edit cloudflare.config.ts: set accountId to your Cloudflare account ID
+   # and worker.name to a name of your own
+   npm ci
+   npx cf auth login
    ```
-   The worker is a single TypeScript file with zero npm dependencies. It also runs on Deno, Bun, or any runtime with the Web Crypto API.
+   `cf` needs Node.js 22.23+, 24.22+, or 26.12+. The worker is a single TypeScript file with zero runtime npm dependencies. It also runs on Deno, Bun, or any runtime with the Web Crypto API.
 
-3. **Set worker secrets:**
+3. **Deploy with the worker secrets** (in the same shell):
    ```bash
-   cd workers/crash-reporter
-   echo "YOUR_APP_ID" | npx wrangler secret put GH_APP_ID
-   echo "YOUR_INSTALL_ID" | npx wrangler secret put GH_INSTALL_ID
    # Key must be PKCS#8 DER base64 (not raw PEM)
-   openssl pkcs8 -topk8 -inform PEM -outform DER -nocrypt -in your-app.pem | \
-     base64 | tr -d '\n' | npx wrangler secret put GH_PRIVATE_KEY
-   # File issues in your repo
-   echo "your-org/your-repo" | npx wrangler secret put GH_REPO
+   KEY=$(openssl pkcs8 -topk8 -inform PEM -outform DER -nocrypt -in your-app.pem | base64 | tr -d '\n')
+   SECRETS=$(mktemp)  # private to you (mode 0600)
+   trap 'rm -f "$SECRETS"' EXIT
+   cat > "$SECRETS" <<JSON
+   {
+     "GH_APP_ID": "YOUR_APP_ID",
+     "GH_INSTALL_ID": "YOUR_INSTALL_ID",
+     "GH_PRIVATE_KEY": "$KEY",
+     "GH_REPO": "your-org/your-repo"
+   }
+   JSON
+   npx cf deploy --secrets-file "$SECRETS"
+   rm -f "$SECRETS"
    ```
+   `GH_REPO` is optional and defaults to `jo-inc/camofox-browser`. Later deploys keep the secrets already set on the Worker.
 
 4. **Point camofox-browser to your endpoint:**
    ```bash
