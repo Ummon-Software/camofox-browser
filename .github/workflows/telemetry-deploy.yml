@@ -9,6 +9,8 @@ on:
 
 jobs:
   deploy:
+    # The Worker lives in jo-inc's Cloudflare account; forks never deploy it.
+    if: github.repository == 'jo-inc/camofox-browser'
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Workers
     defaults:
